@@ -1,22 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, RotateCcw, Palette, Eraser, ChevronLeft, Play, Sparkles, Undo2, Trash2, X, Clock } from 'lucide-react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot } from 'firebase/firestore';
-
-// --- FIREBASE SETUP ---
-let app, auth, db, appId;
-try {
-  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-  if (firebaseConfig) {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-    appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-  }
-} catch (error) {
-  console.warn("Firebase initialization skipped or failed:", error);
-}
 
 // --- COLOR PALETTE ---
 const COLORS = [
@@ -78,16 +61,7 @@ const RenderRecipe = ({ recipe, fills = {}, onColor }) => {
 
   return (
     <>
-      {/* Background Base Circle */}
-      <circle 
-        cx="250" cy="250" r="240" 
-        fill={fills['base'] || '#FFFFFF'} 
-        stroke="#1e293b" strokeWidth="3" 
-        onClick={() => onColor && onColor('base')} 
-        className={onColor ? "cursor-pointer hover:brightness-95 transition-all" : ""} 
-      />
-      
-      {/* Dynamic Shapes */}
+      <circle cx="250" cy="250" r="240" fill={fills['base'] || '#FFFFFF'} stroke="#1e293b" strokeWidth="3" onClick={() => onColor && onColor('base')} className={onColor ? "cursor-pointer hover:brightness-95 transition-all" : ""} />
       {recipe.layers.map((layer) => {
         const angles = Array.from({ length: layer.count }, (_, i) => (360 / layer.count) * i);
         return (
@@ -129,8 +103,6 @@ const RenderRecipe = ({ recipe, fills = {}, onColor }) => {
           </g>
         );
       })}
-      
-      {/* Center Detail */}
       <circle cx="250" cy="250" r="12" fill={fills['center-core'] || '#1e293b'} stroke="#1e293b" strokeWidth="3" onClick={() => onColor && onColor('center-core')} className={onColor ? "cursor-pointer hover:brightness-95 transition-all" : ""} />
     </>
   );
@@ -138,7 +110,6 @@ const RenderRecipe = ({ recipe, fills = {}, onColor }) => {
 
 // --- MAIN APP ---
 export default function App() {
-  const [user, setUser] = useState(null);
   const [loadingSession, setLoadingSession] = useState(true);
   
   const [view, setView] = useState('menu');
@@ -158,71 +129,56 @@ export default function App() {
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const svgRef = useRef(null);
 
-  // 1. Initialize Auth
+  // 1. Initialize Options and Load Gallery from Local Storage
   useEffect(() => {
     setOptions([generateRecipe(), generateRecipe(), generateRecipe(), generateRecipe()]);
-    if (!auth) return setLoadingSession(false);
-
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (e) {
-        console.error("Auth error", e);
-        setLoadingSession(false);
-      }
-    };
-    initAuth();
     
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (!currentUser) setLoadingSession(false);
-    });
-    return () => unsubscribe();
+    // Load offline gallery from device storage
+    try {
+      const storedData = localStorage.getItem('symmetra_gallery');
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        setSavedMandalas(parsedData);
+      }
+    } catch (e) {
+      console.error("Failed to load gallery", e);
+    }
+    
+    setLoadingSession(false);
   }, []);
 
-  // 2. Fetch Gallery of Mandalas
+  // 2. Auto-save Active Mandala to Local Storage
   useEffect(() => {
-    if (!user || !db) return;
-    
-    const mandalasRef = collection(db, 'artifacts', appId, 'users', user.uid, 'mandalas');
-    
-    const unsub = onSnapshot(mandalasRef, (snapshot) => {
-      const fetched = [];
-      snapshot.forEach(doc => {
-        fetched.push({ id: doc.id, ...doc.data() });
-      });
-      
-      // Sort newest first
-      fetched.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-      
-      setSavedMandalas(fetched);
-      setLoadingSession(false);
-    }, (error) => {
-      console.error("Snapshot error:", error);
-      setLoadingSession(false);
-    });
-    return () => unsub();
-  }, [user]);
-
-  // 3. Auto-save Active Mandala
-  useEffect(() => {
-    if (view !== 'drawing' || !activeRecipe || !user || !db) return;
+    if (view !== 'drawing' || !activeRecipe) return;
     
     const timer = setTimeout(() => {
-      const sessionRef = doc(db, 'artifacts', appId, 'users', user.uid, 'mandalas', activeRecipe.id);
-      setDoc(sessionRef, {
-        recipe: activeRecipe,
-        fills: fills,
-        updatedAt: new Date().toISOString()
-      }, { merge: true }).catch(err => console.error("Error saving", err));
-    }, 1000);
+      setSavedMandalas(prev => {
+        const existingIndex = prev.findIndex(m => m.id === activeRecipe.id);
+        const newGallery = [...prev];
+        const newData = {
+          id: activeRecipe.id,
+          recipe: activeRecipe,
+          fills: fills,
+          updatedAt: new Date().toISOString()
+        };
+
+        if (existingIndex >= 0) {
+          newGallery[existingIndex] = newData;
+        } else {
+          newGallery.push(newData);
+        }
+        
+        // Sort newest first
+        newGallery.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        
+        // Save to device
+        localStorage.setItem('symmetra_gallery', JSON.stringify(newGallery));
+        return newGallery;
+      });
+    }, 1000); // Wait 1 second after last interaction to save
     
     return () => clearTimeout(timer);
-  }, [fills, activeRecipe, view, user]);
+  }, [fills, activeRecipe, view]);
 
   // --- ACTIONS ---
   
@@ -259,15 +215,14 @@ export default function App() {
     }
   };
 
-  const deleteMandala = async (e, id) => {
+  const deleteMandala = (e, id) => {
     e.stopPropagation(); // Prevent opening the mandala
-    if (!user || !db) return;
     if (window.confirm("Delete this mandala permanently?")) {
-      try {
-        await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'mandalas', id));
-      } catch (err) {
-        console.error("Failed to delete", err);
-      }
+      setSavedMandalas(prev => {
+        const newGallery = prev.filter(m => m.id !== id);
+        localStorage.setItem('symmetra_gallery', JSON.stringify(newGallery));
+        return newGallery;
+      });
     }
   };
 
@@ -313,7 +268,6 @@ export default function App() {
     img.src = url;
   };
 
-  // Prevent duplicate rendering: Extract the most recent for the top banner, leave the rest for the gallery
   const mostRecentSave = savedMandalas.length > 0 ? savedMandalas[0] : null;
   const galleryMandalas = savedMandalas.length > 1 ? savedMandalas.slice(1) : [];
 
