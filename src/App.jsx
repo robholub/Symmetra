@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Download, RotateCcw, Palette, Eraser, ChevronLeft, Play, Sparkles, Undo2, Trash2, X, Clock } from 'lucide-react';
+import { Download, RotateCcw, Palette, Eraser, ChevronLeft, Play, Sparkles, Undo2, Trash2, X, Clock, ZoomIn, ZoomOut } from 'lucide-react';
 
 // --- COLOR PALETTE ---
 const COLORS = [
@@ -55,13 +55,22 @@ const generateRecipe = () => {
   return { id, name, layers };
 };
 
-// Component to Render a Procedural Recipe safely
+// Component to Render a Procedural Recipe
 const RenderRecipe = ({ recipe, fills = {}, onColor }) => {
   if (!recipe || !recipe.layers) return null;
 
   return (
     <>
-      <circle cx="250" cy="250" r="240" fill={fills['base'] || '#FFFFFF'} stroke="#1e293b" strokeWidth="3" onClick={() => onColor && onColor('base')} className={onColor ? "cursor-pointer hover:brightness-95 transition-all" : ""} />
+      {/* Background Base Circle */}
+      <circle 
+        cx="250" cy="250" r="240" 
+        fill={fills['base'] || '#FFFFFF'} 
+        stroke="#1e293b" strokeWidth="3" 
+        onClick={() => onColor && onColor('base')} 
+        className={onColor ? "cursor-pointer hover:brightness-95 transition-all" : ""} 
+      />
+      
+      {/* Dynamic Shapes */}
       {recipe.layers.map((layer) => {
         const angles = Array.from({ length: layer.count }, (_, i) => (360 / layer.count) * i);
         return (
@@ -103,6 +112,8 @@ const RenderRecipe = ({ recipe, fills = {}, onColor }) => {
           </g>
         );
       })}
+      
+      {/* Center Detail */}
       <circle cx="250" cy="250" r="12" fill={fills['center-core'] || '#1e293b'} stroke="#1e293b" strokeWidth="3" onClick={() => onColor && onColor('center-core')} className={onColor ? "cursor-pointer hover:brightness-95 transition-all" : ""} />
     </>
   );
@@ -115,18 +126,22 @@ export default function App() {
   const [view, setView] = useState('menu');
   const [activeRecipe, setActiveRecipe] = useState(null);
   
-  // State for Colors & History
+  // States for Coloring & History
   const [fills, setFills] = useState({});
   const [history, setHistory] = useState([]);
+  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+  
+  // State for Panning/Zooming
+  const [zoom, setZoom] = useState(1);
   
   // Modal States
   const [showConfirmReset, setShowConfirmReset] = useState(false);
+  const [mandalaToDelete, setMandalaToDelete] = useState(null);
   const [exportDataUrl, setExportDataUrl] = useState(null);
 
   // Gallery Data
   const [savedMandalas, setSavedMandalas] = useState([]);
   const [options, setOptions] = useState([]);
-  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const svgRef = useRef(null);
 
   // 1. Initialize Options and Load Gallery from Local Storage
@@ -175,7 +190,7 @@ export default function App() {
         localStorage.setItem('symmetra_gallery', JSON.stringify(newGallery));
         return newGallery;
       });
-    }, 1000); // Wait 1 second after last interaction to save
+    }, 1000); 
     
     return () => clearTimeout(timer);
   }, [fills, activeRecipe, view]);
@@ -203,6 +218,7 @@ export default function App() {
     setActiveRecipe(recipe);
     setFills({});
     setHistory([]);
+    setZoom(1); // Reset zoom on new artwork
     setView('drawing');
   };
 
@@ -211,19 +227,19 @@ export default function App() {
       setActiveRecipe(savedItem.recipe);
       setFills(savedItem.fills || {});
       setHistory([]);
+      setZoom(1); // Reset zoom on load
       setView('drawing');
     }
   };
 
-  const deleteMandala = (e, id) => {
-    e.stopPropagation(); // Prevent opening the mandala
-    if (window.confirm("Delete this mandala permanently?")) {
-      setSavedMandalas(prev => {
-        const newGallery = prev.filter(m => m.id !== id);
-        localStorage.setItem('symmetra_gallery', JSON.stringify(newGallery));
-        return newGallery;
-      });
-    }
+  const confirmDelete = () => {
+    if (!mandalaToDelete) return;
+    setSavedMandalas(prev => {
+      const newGallery = prev.filter(m => m.id !== mandalaToDelete.id);
+      localStorage.setItem('symmetra_gallery', JSON.stringify(newGallery));
+      return newGallery;
+    });
+    setMandalaToDelete(null); // Close Modal
   };
 
   const performClear = () => {
@@ -291,7 +307,15 @@ export default function App() {
             
             {/* Quick Continue Banner */}
             {mostRecentSave && mostRecentSave.recipe && (
-              <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center gap-6">
+              <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
+                <button 
+                  onClick={() => setMandalaToDelete(mostRecentSave)}
+                  className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-600 bg-white/80 backdrop-blur rounded-full transition-colors z-10"
+                  title="Delete"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+
                 <div className="flex-1 space-y-4 text-center md:text-left">
                   <h2 className="text-2xl font-bold text-slate-800 flex items-center justify-center md:justify-start gap-2">
                     <Clock className="w-6 h-6 text-indigo-500" />
@@ -326,7 +350,7 @@ export default function App() {
                     <div 
                       key={savedItem.id} 
                       onClick={() => continueSession(savedItem)}
-                      className="group bg-white rounded-3xl p-4 shadow-sm hover:shadow-md border border-slate-200 hover:border-indigo-400 transition-all cursor-pointer relative flex flex-col"
+                      className="group bg-white rounded-3xl p-4 shadow-sm hover:shadow-md border border-slate-200 hover:border-indigo-400 transition-all cursor-pointer flex flex-col"
                     >
                       <div className="w-full aspect-square rounded-2xl bg-slate-50 border border-slate-100 p-2 mb-3 pointer-events-none">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -20 540 540" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
@@ -338,9 +362,10 @@ export default function App() {
                         <span className="font-bold text-sm text-slate-700 truncate pr-2 group-hover:text-indigo-600 transition-colors">
                           {savedItem.recipe?.name || 'Untitled'}
                         </span>
+                        {/* TRASH ICON: Made permanently visible by removing opacity-0 */}
                         <button 
-                          onClick={(e) => deleteMandala(e, savedItem.id)}
-                          className="p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors opacity-0 group-hover:opacity-100 flex-none"
+                          onClick={(e) => { e.stopPropagation(); setMandalaToDelete(savedItem); }}
+                          className="p-2 text-slate-400 bg-slate-50 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors flex-none"
                           title="Delete Mandala"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -385,7 +410,7 @@ export default function App() {
     <div className="h-full flex flex-col relative z-10">
       
       {/* HEADER */}
-      <header className="h-16 md:h-20 flex-none flex items-center justify-between px-4 md:px-8 bg-white border-b border-slate-200 shadow-sm z-10">
+      <header className="h-16 md:h-20 flex-none flex items-center justify-between px-4 md:px-8 bg-white border-b border-slate-200 shadow-sm z-20 relative">
         <div className="flex items-center gap-1 md:gap-4">
           <button onClick={() => setView('menu')} className="flex items-center justify-center p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
             <ChevronLeft className="w-6 h-6" />
@@ -409,17 +434,39 @@ export default function App() {
         </div>
       </header>
 
-      {/* CANVAS */}
-      <main className="flex-1 min-h-0 flex items-center justify-center p-4 md:p-8 bg-slate-50 bg-[radial-gradient(#cbd5e1_2px,transparent_2px)] [background-size:24px_24px]">
-        <div className="w-full h-full max-w-[750px] flex items-center justify-center transition-transform duration-300">
-          <svg ref={svgRef} xmlns="http://www.w3.org/2000/svg" viewBox="-20 -20 540 540" className="w-full h-full max-h-full" preserveAspectRatio="xMidYMid meet">
-            <RenderRecipe recipe={activeRecipe} fills={fills} onColor={handleColor} />
-          </svg>
+      {/* CANVAS WITH ZOOM AND PAN */}
+      <main className="flex-1 min-h-0 relative bg-slate-50 bg-[radial-gradient(#cbd5e1_2px,transparent_2px)] [background-size:24px_24px] overflow-hidden">
+        
+        {/* Scrollable Area - Allows native panning when zoomed in */}
+        <div className="w-full h-full overflow-auto touch-pan-x touch-pan-y custom-scrollbar">
+          {/* Centering Wrapper */}
+          <div className="min-w-full min-h-full flex p-4 md:p-8">
+            {/* The actual zoomable container */}
+            <div 
+              className="m-auto aspect-square transition-all duration-300 ease-out drop-shadow-2xl"
+              style={{ width: `${100 * zoom}%`, maxWidth: `${750 * zoom}px`, minWidth: `${300 * zoom}px` }}
+            >
+              <svg ref={svgRef} xmlns="http://www.w3.org/2000/svg" viewBox="-20 -20 540 540" className="w-full h-full overflow-hidden" preserveAspectRatio="xMidYMid meet">
+                <RenderRecipe recipe={activeRecipe} fills={fills} onColor={handleColor} />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Floating Zoom Controls */}
+        <div className="absolute top-4 right-4 flex flex-col bg-white shadow-lg rounded-xl border border-slate-200 p-1 z-10">
+          <button onClick={() => setZoom(z => Math.min(z + 0.5, 3))} className="p-3 text-slate-600 hover:bg-slate-100 hover:text-indigo-600 rounded-lg transition-colors">
+            <ZoomIn className="w-5 h-5" />
+          </button>
+          <div className="h-px bg-slate-200 mx-2 my-1"></div>
+          <button onClick={() => setZoom(z => Math.max(z - 0.5, 1))} className="p-3 text-slate-600 hover:bg-slate-100 hover:text-indigo-600 rounded-lg transition-colors">
+            <ZoomOut className="w-5 h-5" />
+          </button>
         </div>
       </main>
 
       {/* TOOLS / COLORS */}
-      <footer className="h-24 md:h-28 flex-none bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
+      <footer className="h-24 md:h-28 flex-none bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 relative">
         <div className="h-full w-full max-w-5xl mx-auto flex items-center px-4 md:px-8 gap-4 overflow-x-auto no-scrollbar">
           <style>{`.no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
           
@@ -440,7 +487,7 @@ export default function App() {
     <div className="h-screen w-screen bg-slate-50 flex flex-col overflow-hidden font-sans text-slate-800">
       {view === 'menu' ? renderMenu() : renderWorkspace()}
 
-      {/* UI Modal: Confirm Reset */}
+      {/* UI Modal: Confirm Clear */}
       {showConfirmReset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-xl flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-200">
@@ -452,6 +499,23 @@ export default function App() {
             <div className="flex gap-3 w-full">
               <button onClick={() => setShowConfirmReset(false)} className="flex-1 py-3 px-4 rounded-xl font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">Cancel</button>
               <button onClick={performClear} className="flex-1 py-3 px-4 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors">Clear All</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UI Modal: Confirm Delete from Gallery */}
+      {mandalaToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-xl flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
+              <Trash2 className="w-8 h-8" />
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 mb-2">Delete Design?</h3>
+            <p className="text-slate-500 mb-8">Are you sure you want to delete "<strong>{mandalaToDelete.recipe?.name}</strong>"? This cannot be undone.</p>
+            <div className="flex gap-3 w-full">
+              <button onClick={() => setMandalaToDelete(null)} className="flex-1 py-3 px-4 rounded-xl font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">Cancel</button>
+              <button onClick={confirmDelete} className="flex-1 py-3 px-4 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors">Delete</button>
             </div>
           </div>
         </div>
