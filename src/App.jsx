@@ -9,8 +9,27 @@ const COLORS = [
 ];
 
 // --- PROCEDURAL GENERATOR ---
-const PREFIXES = ['Mystic', 'Solar', 'Lunar', 'Cosmic', 'Sacred', 'Astral', 'Ethereal', 'Crystal', 'Zen', 'Spirit'];
-const SUFFIXES = ['Bloom', 'Crown', 'Star', 'Lotus', 'Nova', 'Harmony', 'Aura', 'Pulse', 'Crest', 'Eye'];
+const ADJECTIVES = [
+  'Mystic', 'Solar', 'Lunar', 'Cosmic', 'Sacred', 'Astral', 'Ethereal', 'Crystal', 'Zen', 'Spirit',
+  'Radiant', 'Prismatic', 'Neon', 'Velvet', 'Silent', 'Infinite', 'Golden', 'Midnight', 'Crimson', 'Sapphire',
+  'Emerald', 'Obsidian', 'Wandering', 'Whispering', 'Shimmering', 'Ancient', 'Hidden', 'Divine', 'Dreamy', 'Fractal',
+  'Geometric', 'Floating', 'Stellar', 'Galactic', 'Serene', 'Joyful', 'Wild', 'Deep', 'Luminous', 'Gentle',
+  'Echoing', 'Painted', 'Royal', 'Frosted', 'Flaming', 'Tranquil', 'Lucid', 'Vibrant', 'Ember', 'Celestial'
+];
+
+const NOUNS = [
+  'Bloom', 'Crown', 'Star', 'Lotus', 'Nova', 'Harmony', 'Aura', 'Pulse', 'Crest', 'Eye',
+  'Prism', 'Spark', 'Wave', 'Tear', 'Dream', 'Dance', 'Song', 'Whisper', 'Core', 'Heart',
+  'Soul', 'Fire', 'Light', 'Shadow', 'Gem', 'Jewel', 'Petal', 'Leaf', 'Fern', 'Garden',
+  'Orbit', 'Matrix', 'Lattice', 'Ripple', 'Tide', 'Stream', 'River', 'Ocean', 'Peak', 'Valley',
+  'Dawn', 'Dusk', 'Eclipse', 'Zenith', 'Horizon', 'Mirage', 'Oasis', 'Spire', 'Halo', 'Symmetry'
+];
+
+const CONCEPTS = [
+  'Light', 'Time', 'Space', 'Dreams', 'Silence', 'Eternity', 'Joy', 'Peace', 'Shadows', 'Stars',
+  'the Void', 'the Dawn', 'the Deep', 'Fire', 'Water', 'Earth', 'Air', 'Spirit', 'Wonder', 'Magic',
+  'the Cosmos', 'Wisdom', 'Truth', 'Life', 'the Sun', 'the Moon', 'the Heavens', 'the Unknown', 'Creation', 'Destiny'
+];
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -18,7 +37,21 @@ const generateId = () => {
 };
 
 const generateRecipe = () => {
-  const name = `${PREFIXES[Math.floor(Math.random() * PREFIXES.length)]} ${SUFFIXES[Math.floor(Math.random() * SUFFIXES.length)]}`;
+  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
+  const concept = CONCEPTS[Math.floor(Math.random() * CONCEPTS.length)];
+
+  const patternNum = Math.random();
+  let name = "";
+  
+  if (patternNum < 0.5) {
+    name = `${adj} ${noun}`; // e.g., Mystic Bloom (50% chance)
+  } else if (patternNum < 0.75) {
+    name = `The ${adj} ${noun}`; // e.g., The Radiant Prism (25% chance)
+  } else {
+    name = `${noun} of ${concept}`; // e.g., Lattice of Eternity (25% chance)
+  }
+
   const id = generateId();
   const layers = [];
   
