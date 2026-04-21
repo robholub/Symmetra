@@ -8,9 +8,16 @@
   "description": "Infinite mandalas, infinite fun.",
   "icons": [
     {
-      "src": "[https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Torus_icon.svg/512px-Torus_icon.svg.png](https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Torus_icon.svg/512px-Torus_icon.svg.png)",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
