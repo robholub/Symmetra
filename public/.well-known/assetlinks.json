@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.symmetra_omega.twa",
+        "sha256_cert_fingerprints": ["BD:D9:EC:E3:67:E9:74:B3:32:64:39:B7:CA:B4:8C:2D:DE:70:54:34:2F:8C:EA:19:C1:31:2C:5B:A2:59:A2:C8"]
+      }
+    }]
