@@ -1,0 +1,16 @@
+{
+  "name": "Symmetra",
+  "short_name": "Symmetra",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#4f46e5",
+  "description": "Infinite mandalas, infinite fun.",
+  "icons": [
+    {
+      "src": "[https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Torus_icon.svg/512px-Torus_icon.svg.png](https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Torus_icon.svg/512px-Torus_icon.svg.png)",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
