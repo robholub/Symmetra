@@ -1,11 +1,32 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, RotateCcw, Palette, Eraser, ChevronLeft, Play, Sparkles, Undo2, Trash2, X, Clock, ZoomIn, ZoomOut } from 'lucide-react';
 
-// --- COLOR PALETTE ---
-const COLORS = [
-  '#FF3B30', '#FF9500', '#FFCC00', '#4CD964', '#5AC8FA', '#007AFF', '#5856D6', '#FF2D55', 
-  '#F72585', '#7209B7', '#3A0CA3', '#4361EE', '#4CC9F0', 
-  '#F94144', '#F3722C', '#F8961E', '#90BE6D', '#43AA8B', '#111827'
+// --- COLOR PALETTES ---
+const PALETTES = [
+  {
+    name: "Vibrant",
+    colors: ['#FF3B30', '#FF9500', '#FFCC00', '#4CD964', '#5AC8FA', '#007AFF', '#5856D6', '#FF2D55', '#F72585', '#7209B7', '#3A0CA3', '#4361EE', '#4CC9F0', '#F94144', '#F3722C', '#F8961E', '#90BE6D', '#43AA8B', '#111827']
+  },
+  {
+    name: "Pastel",
+    colors: ['#FFB5E8', '#FF9CEE', '#FFCCF9', '#FCC2FF', '#F6A6FF', '#B28DFF', '#C5A3FF', '#D5AAFF', '#ECD4FF', '#FBE4FF', '#D291BC', '#E0BBE4', '#957DAD', '#D2FDFF', '#B5EAD7', '#E2F0CB', '#FFDFD3', '#FFF5BA', '#85E3FF']
+  },
+  {
+    name: "Earth",
+    colors: ['#6B705C', '#A5A58D', '#B7B7A4', '#FFE8D6', '#DDBEA9', '#CB997E', '#84A98C', '#52796F', '#354F52', '#2F3E46', '#CD5D67', '#BA1826', '#9B2226', '#E9D8A6', '#EE9B00', '#CA6702', '#BB3E03', '#AE2012', '#0A0908']
+  },
+  {
+    name: "Ocean",
+    colors: ['#03045E', '#023E8A', '#0077B6', '#0096C7', '#00B4D8', '#48CAE4', '#90E0EF', '#ADE8F4', '#CAF0F8', '#00F5D4', '#00BBF9', '#F15BB5', '#4CC9F0', '#3A0CA3', '#4361EE', '#7209B7', '#F72585', '#4895EF', '#3F37C9']
+  },
+  {
+    name: "Sunset",
+    colors: ['#FF7B00', '#FF8800', '#FF9500', '#FFA200', '#FFAA00', '#FFB700', '#FFC300', '#FFD000', '#FFDD00', '#FFEA00', '#E01E37', '#C71F37', '#B21F35', '#A11D33', '#85182A', '#641220', '#2D00F7', '#6A00F4', '#F20089']
+  },
+  {
+    name: "Mono",
+    colors: ['#000000', '#1C1C1C', '#383838', '#555555', '#717171', '#8D8D8D', '#AAAAAA', '#C6C6C6', '#E2E2E2', '#FFFFFF', '#191919', '#333333', '#4C4C4C', '#666666', '#7F7F7F', '#999999', '#B2B2B2', '#CCCCCC', '#E5E5E5']
+  }
 ];
 
 // --- PROCEDURAL GENERATOR ---
@@ -45,11 +66,11 @@ const generateRecipe = () => {
   let name = "";
   
   if (patternNum < 0.5) {
-    name = `${adj} ${noun}`; // e.g., Mystic Bloom (50% chance)
+    name = `${adj} ${noun}`;
   } else if (patternNum < 0.75) {
-    name = `The ${adj} ${noun}`; // e.g., The Radiant Prism (25% chance)
+    name = `The ${adj} ${noun}`;
   } else {
-    name = `${noun} of ${concept}`; // e.g., Lattice of Eternity (25% chance)
+    name = `${noun} of ${concept}`;
   }
 
   const id = generateId();
@@ -88,13 +109,12 @@ const generateRecipe = () => {
   return { id, name, layers };
 };
 
-// Component to Render a Procedural Recipe
+// Component to Render a Procedural Recipe safely
 const RenderRecipe = ({ recipe, fills = {}, onColor }) => {
   if (!recipe || !recipe.layers) return null;
 
   return (
     <>
-      {/* Background Base Circle */}
       <circle 
         cx="250" cy="250" r="240" 
         fill={fills['base'] || '#FFFFFF'} 
@@ -103,7 +123,6 @@ const RenderRecipe = ({ recipe, fills = {}, onColor }) => {
         className={onColor ? "cursor-pointer hover:brightness-95 transition-all" : ""} 
       />
       
-      {/* Dynamic Shapes */}
       {recipe.layers.map((layer) => {
         const angles = Array.from({ length: layer.count }, (_, i) => (360 / layer.count) * i);
         return (
@@ -146,7 +165,6 @@ const RenderRecipe = ({ recipe, fills = {}, onColor }) => {
         );
       })}
       
-      {/* Center Detail */}
       <circle cx="250" cy="250" r="12" fill={fills['center-core'] || '#1e293b'} stroke="#1e293b" strokeWidth="3" onClick={() => onColor && onColor('center-core')} className={onColor ? "cursor-pointer hover:brightness-95 transition-all" : ""} />
     </>
   );
@@ -159,10 +177,11 @@ export default function App() {
   const [view, setView] = useState('menu');
   const [activeRecipe, setActiveRecipe] = useState(null);
   
-  // States for Coloring & History
+  // States for Coloring & Palette
   const [fills, setFills] = useState({});
   const [history, setHistory] = useState([]);
-  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+  const [activePalette, setActivePalette] = useState(0);
+  const [selectedColor, setSelectedColor] = useState(PALETTES[0].colors[0]);
   
   // State for Panning/Zooming
   const [zoom, setZoom] = useState(1);
@@ -181,7 +200,6 @@ export default function App() {
   useEffect(() => {
     setOptions([generateRecipe(), generateRecipe(), generateRecipe(), generateRecipe()]);
     
-    // Load offline gallery from device storage
     try {
       const storedData = localStorage.getItem('symmetra_gallery');
       if (storedData) {
@@ -216,10 +234,7 @@ export default function App() {
           newGallery.push(newData);
         }
         
-        // Sort newest first
         newGallery.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-        
-        // Save to device
         localStorage.setItem('symmetra_gallery', JSON.stringify(newGallery));
         return newGallery;
       });
@@ -247,11 +262,17 @@ export default function App() {
     });
   };
 
+  const togglePalette = () => {
+    const nextIndex = (activePalette + 1) % PALETTES.length;
+    setActivePalette(nextIndex);
+    setSelectedColor(PALETTES[nextIndex].colors[0]); // Auto-select first color of new palette
+  };
+
   const startNew = (recipe) => {
     setActiveRecipe(recipe);
     setFills({});
     setHistory([]);
-    setZoom(1); // Reset zoom on new artwork
+    setZoom(1); 
     setView('drawing');
   };
 
@@ -260,7 +281,7 @@ export default function App() {
       setActiveRecipe(savedItem.recipe);
       setFills(savedItem.fills || {});
       setHistory([]);
-      setZoom(1); // Reset zoom on load
+      setZoom(1); 
       setView('drawing');
     }
   };
@@ -272,7 +293,7 @@ export default function App() {
       localStorage.setItem('symmetra_gallery', JSON.stringify(newGallery));
       return newGallery;
     });
-    setMandalaToDelete(null); // Close Modal
+    setMandalaToDelete(null); 
   };
 
   const performClear = () => {
@@ -306,7 +327,7 @@ export default function App() {
       try {
         const downloadLink = document.createElement('a');
         downloadLink.href = pngUrl;
-        downloadLink.download = `symmetra-${activeRecipe.name.replace(' ', '-').toLowerCase()}.png`;
+        downloadLink.download = `symmetra-${activeRecipe.name.replace(/ /g, '-').toLowerCase()}.png`;
         document.body.appendChild(downloadLink);
         downloadLink.click();
         document.body.removeChild(downloadLink);
@@ -395,7 +416,6 @@ export default function App() {
                         <span className="font-bold text-sm text-slate-700 truncate pr-2 group-hover:text-indigo-600 transition-colors">
                           {savedItem.recipe?.name || 'Untitled'}
                         </span>
-                        {/* TRASH ICON: Made permanently visible by removing opacity-0 */}
                         <button 
                           onClick={(e) => { e.stopPropagation(); setMandalaToDelete(savedItem); }}
                           className="p-2 text-slate-400 bg-slate-50 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors flex-none"
@@ -470,11 +490,8 @@ export default function App() {
       {/* CANVAS WITH ZOOM AND PAN */}
       <main className="flex-1 min-h-0 relative bg-slate-50 bg-[radial-gradient(#cbd5e1_2px,transparent_2px)] [background-size:24px_24px] overflow-hidden">
         
-        {/* Scrollable Area - Allows native panning when zoomed in */}
         <div className="w-full h-full overflow-auto touch-pan-x touch-pan-y custom-scrollbar">
-          {/* Centering Wrapper */}
           <div className="min-w-full min-h-full flex p-4 md:p-8">
-            {/* The actual zoomable container */}
             <div 
               className="m-auto aspect-square transition-all duration-300 ease-out drop-shadow-2xl"
               style={{ width: `${100 * zoom}%`, maxWidth: `${750 * zoom}px`, minWidth: `${300 * zoom}px` }}
@@ -486,7 +503,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Floating Zoom Controls */}
         <div className="absolute top-4 right-4 flex flex-col bg-white shadow-lg rounded-xl border border-slate-200 p-1 z-10">
           <button onClick={() => setZoom(z => Math.min(z + 0.5, 3))} className="p-3 text-slate-600 hover:bg-slate-100 hover:text-indigo-600 rounded-lg transition-colors">
             <ZoomIn className="w-5 h-5" />
@@ -503,11 +519,23 @@ export default function App() {
         <div className="h-full w-full max-w-5xl mx-auto flex items-center px-4 md:px-8 gap-4 overflow-x-auto no-scrollbar">
           <style>{`.no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
           
+          {/* Eraser */}
           <button onClick={() => setSelectedColor('#FFFFFF')} className={`flex-none w-14 h-14 rounded-full flex items-center justify-center transition-transform duration-200 ${selectedColor === '#FFFFFF' ? 'ring-4 ring-indigo-500 ring-offset-2 scale-110 bg-slate-100' : 'ring-1 ring-slate-300 bg-white hover:bg-slate-50'}`}>
             <Eraser className={`w-6 h-6 ${selectedColor === '#FFFFFF' ? 'text-indigo-600' : 'text-slate-500'}`} />
           </button>
-          <div className="w-px h-10 bg-slate-200 flex-none mx-2"></div>
-          {COLORS.map((color) => (
+          
+          <div className="w-px h-10 bg-slate-200 flex-none mx-1 md:mx-2"></div>
+          
+          {/* Palette Switcher */}
+          <button onClick={togglePalette} className="flex-none px-4 h-14 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors ring-1 ring-slate-200 flex flex-col items-center justify-center gap-1 shadow-sm">
+            <Palette className="w-5 h-5 text-indigo-600" />
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{PALETTES[activePalette].name}</span>
+          </button>
+
+          <div className="w-px h-10 bg-slate-200 flex-none mx-1 md:mx-2"></div>
+
+          {/* Current Palette Colors */}
+          {PALETTES[activePalette].colors.map((color) => (
             <button key={color} onClick={() => setSelectedColor(color)} className={`flex-none w-12 h-12 md:w-14 md:h-14 rounded-full transition-transform duration-200 ${selectedColor === color ? 'ring-4 ring-indigo-500 ring-offset-2 scale-110 shadow-lg' : 'ring-1 ring-black/10 shadow-sm hover:scale-105'}`} style={{ backgroundColor: color }} />
           ))}
           <div className="flex-none w-4 h-full"></div>
